@@ -4,8 +4,6 @@ pg.init()
 display = pg.display.set_mode((0, 0), pg.FULLSCREEN)
 pg.display.set_caption('Hopper')
 
-running = True
-
 def load_map_file(path):
 	f = open(path, 'r')
 	data = f.read()
@@ -16,7 +14,7 @@ def load_map_file(path):
 		game_map.append(list(row))
 	return game_map
 
-game_map = load_map_file('assets/maps/peepee.txt')
+game_map = load_map_file('assets/maps/grassyknoll.txt')
 
 grass_block = pg.transform.scale(pg.image.load('assets/pictures/grass.png'), (64, 64))
 dirt_block = pg.transform.scale(pg.image.load('assets/pictures/dirt.png'), (64, 64))
@@ -43,9 +41,11 @@ float_scroll = [0, 0]
 
 moving = [False, False]
 facing = [False, True]
+air_facing = [False, True]
 crouch = False
 
 ySpeed = 0
+slow_speed = 1
 air_time = 0
 up_pressed = False
 
@@ -116,6 +116,8 @@ player_pos = pg.Rect(player_pic.get_rect())
 starting_x = 128
 player_pos.x = starting_x
 
+running = True
+
 while running:
 
 	clock.tick(60)
@@ -146,20 +148,22 @@ while running:
 				blocks.append(pg.Rect(x * block_size, y * block_size, block_size, block_size))
 
 	player_movement = [0, 0]
-	crouch_speed = 1
-	if crouch:
-		crouch_speed = 2
-	if moving[0]:
-		player_movement[0] -= 10 / crouch_speed 
-		facing[0] = True
-		facing[1] = False
-	if moving[1]:
-		player_movement[0] += 10 / crouch_speed
-		facing[1] = True
-		facing[0] = False
 	player_movement[1] += ySpeed
 	if ySpeed < 16:
 		ySpeed += .5
+	if air_time < 5:
+		slow_speed = 1
+		air_facing = facing.copy()
+	if crouch or air_facing != facing:
+		slow_speed = 2
+	if moving[0]:
+		player_movement[0] -= 10 / slow_speed 
+		facing[0] = True
+		facing[1] = False
+	if moving[1]:
+		player_movement[0] += 10 / slow_speed
+		facing[1] = True
+		facing[0] = False
 
 	player_pos, collision_direction = move(player_pos, player_movement, blocks)
 
@@ -204,6 +208,7 @@ while running:
 				moving[1] = True
 			if event.key == pg.K_UP and air_time < 5:
 				ySpeed -= 12
+				air_facing = facing.copy()
 				up_pressed = True
 			if event.key == pg.K_DOWN:
 				crouch = True

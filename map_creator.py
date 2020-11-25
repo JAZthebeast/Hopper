@@ -41,8 +41,11 @@ for y in range(20):
 			game_map_row.append('0')
 	game_map.append(game_map_row)
 
-def my_round(num, block_size, offset):
-	return int(block_size * math.floor((num) / block_size))
+def pixel_to_grid(px, py, block_size, x_offset, y_offset):
+    return px // block_size + x_offset, py // block_size + y_offset
+
+def grid_to_pixel(gx, gy, block_size, x_offset, y_offset):
+    return (gx - x_offset) * block_size, (gy - y_offset) * block_size
 
 running = True
 while running:
@@ -66,44 +69,43 @@ while running:
 		selected_block = stone_block
 		num = '1'
 
-	hover_block_x = my_round(pg.mouse.get_pos()[0], block_size, x_offset)
-	hover_block_y = my_round(pg.mouse.get_pos()[1], block_size, y_offset)
-
 	for y in range(len(game_map)):
 		for x in range(len(game_map[y])):
-
+			gx, gy = grid_to_pixel(x, y, block_size, x_offset, y_offset)
 			if game_map[y][x] == '3':
-				display.blit(grass_block, (x * block_size + x_offset, y * block_size + y_offset))
+				display.blit(grass_block, (gx, gy))
 
 			elif game_map[y][x] == '2':
-				display.blit(dirt_block, (x * block_size + x_offset, y * block_size + y_offset))
+				display.blit(dirt_block, (gx, gy))
 
 			elif game_map[y][x] == '1':
-				display.blit(stone_block, (x * block_size + x_offset, y * block_size + y_offset))
+				display.blit(stone_block, (gx, gy))
 
 			elif game_map[y][x] == 'b':
-				display.blit(border_block, (x * block_size + x_offset, y * block_size + y_offset))
+				display.blit(border_block, (gx, gy))
+
+	hx, hy = pixel_to_grid(pg.mouse.get_pos()[0], pg.mouse.get_pos()[1], block_size, x_offset, y_offset)
 
 	try:
-		if game_map[int((hover_block_y - y_offset) / block_size)][int((hover_block_x - x_offset) / block_size)] != 'b':
+		if game_map[hy][hx] != 'b':
 			if del_block:
-				game_map[int((hover_block_y - y_offset) / block_size)][int((hover_block_x - x_offset) / block_size)] = '0'
+				game_map[hy][hx] = '0'
 			elif clicking:
-				game_map[int((hover_block_y - y_offset) / block_size)][int((hover_block_x - x_offset) / block_size)] = num
+				game_map[hy][hx] = num
 	except IndexError: 
 		pass
 
 	if not del_block:
-		display.blit(pg.transform.scale(selected_block, (block_size, block_size)), (hover_block_x, hover_block_y))
+		display.blit(pg.transform.scale(selected_block, (block_size, block_size)), grid_to_pixel(hx, hy, block_size, x_offset, y_offset))
 
 	if up:
-		y_offset += block_size
+		y_offset -= 1
 	if down:
-		y_offset -= block_size
+		y_offset += 1
 	if left:
-		x_offset += block_size
+		x_offset -= 1
 	if right:
-		x_offset -= block_size
+		x_offset += 1
 
 	for event in pg.event.get():
 		if event.type == pg.QUIT:
@@ -128,8 +130,6 @@ while running:
 				if keys[pg.K_LSHIFT]:
 					if block_size + 16 != 80:
 						block_size += 16
-						x_offset -= block_size*2
-						y_offset -= block_size*2
 				else:
 					up = True
 			if event.key == pg.K_DOWN:
@@ -137,8 +137,6 @@ while running:
 				if keys[pg.K_LSHIFT]:
 					if block_size - 16 != 0:
 						block_size -= 16
-						x_offset += block_size/2
-						y_offset += block_size/2
 				else:
 					down = True
 			if event.key == pg.K_LEFT:
@@ -158,14 +156,20 @@ while running:
 
 	pg.display.update()
 
-file_name = 'map_file'
-
-map_file = open('assets/maps/' + file_name + '.txt', 'w')
-for y in range(20):
-	for x in range(100):
-		map_file.write(game_map[y][x])
-	map_file.write('\n')
-map_file.close()
-
 pg.display.quit()
+
+make_map = input('Do you want to save this map? (y / n): ')
+
+if make_map == 'y':
+	map_name = input('What would you like to name it? ')
+	map_name = map_name.replace(' ', '_')
+	file_name = map_name
+
+	map_file = open('assets/maps/' + file_name + '.txt', 'w')
+	for y in range(20):
+		for x in range(100):
+			map_file.write(game_map[y][x])
+		map_file.write('\n')
+	map_file.close()
+
 pg.quit()
