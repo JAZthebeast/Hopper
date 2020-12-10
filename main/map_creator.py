@@ -1,6 +1,33 @@
 import pygame as pg, math
 pg.init()
 
+def load_map_file(path):
+	f = open(path, 'r')
+	data = f.read()
+	f.close()
+	data = data.split('\n')
+	game_map = []
+	for row in data:
+		game_map.append(list(row))
+	return game_map, path
+
+if input('Would you like to open a previously saved map? (y / n): ') == 'y':
+	game_map, path = load_map_file('../assets/maps/' + str(input('What was it\'s name? ')) + '.txt')
+	old_map = True
+else:
+	game_map = []
+	for y in range(20):
+		game_map_row = []
+		for x in range(100):
+			if y == 0 or y == 19:
+				game_map_row.append('b')
+			elif x == 0 or x == 99:
+				game_map_row.append('b')
+			else:
+				game_map_row.append('0')
+		game_map.append(game_map_row)
+		old_map = False
+
 display = pg.display.set_mode((0, 0), pg.FULLSCREEN)
 pg.display.set_caption('Hopper Map Creator')
 
@@ -30,18 +57,6 @@ border_block = pg.image.load('../assets/pictures/border.png')
 selector = pg.image.load('../assets/pictures/selector.png')
 
 selected_block = grass_block
-
-game_map = []
-for y in range(20):
-	game_map_row = []
-	for x in range(100):
-		if y == 0 or y == 19:
-			game_map_row.append('b')
-		elif x == 0 or x == 99:
-			game_map_row.append('b')
-		else:
-			game_map_row.append('0')
-	game_map.append(game_map_row)
 
 def pixel_to_grid(px, py, block_size, x_offset, y_offset):
     return px // block_size + x_offset, py // block_size + y_offset
@@ -161,11 +176,14 @@ pg.quit()
 make_map = input('Do you want to save this map? (y / n): ')
 
 if make_map == 'y':
-	map_name = input('What would you like to name it? ')
-	map_name = map_name.replace(' ', '_')
-	file_name = map_name
+	if not old_map:
+		map_name = input('What would you like to name it? ')
+		map_name = map_name.replace(' ', '_')
+		file_name = map_name
+		map_file = open('../assets/maps/' + file_name + '.txt', 'w')
+	elif old_map:
+		map_file = open(path, 'w')
 
-	map_file = open('../assets/maps/' + file_name + '.txt', 'w')
 	for y in range(20):
 		for x in range(100):
 			map_file.write(game_map[y][x])

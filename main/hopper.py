@@ -15,7 +15,7 @@ def load_map_file(path):
 		game_map.append(list(row))
 	return game_map
 #Loads Map
-game_map = load_map_file('../assets/maps/stern.txt')
+game_map = load_map_file('../assets/maps/first_map.txt')
 #Initializes Images
 def load_images(path):
 	image = pg.transform.scale(pg.image.load(path), (64, 64))
@@ -179,13 +179,11 @@ while running:
 	#Checks To See If Terminal Velocity Has Been Reached, If Not, Raises Velocity
 	if ySpeed < 16:
 		ySpeed += .5
-	#Checks To See If Player Is On The Ground, If Yes, It Resets Air Facing  
-	if air_time < 5:
-		slow_speed = 1
-		air_facing = facing.copy()
-	#Checks To See If Player Faced A Different Direction In Air Than That Of Which They Started With, If Yes, It Slows Player
-	if crouch or air_facing != facing:
+	#Checks If Crouched, If So, Sets Slow Speed
+	if crouch:
 		slow_speed = 2
+	else:
+		slow_speed = 1
 	#Sets Moving Values
 	if moving[0]:
 		player_movement[0] -= 10 / slow_speed 
