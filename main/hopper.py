@@ -15,33 +15,25 @@ def load_map_file(path):
 		game_map.append(list(row))
 	return game_map
 #Loads Map
-game_map = load_map_file('assets/maps/grassyknoll.txt')
+game_map = load_map_file('../assets/maps/stern.txt')
 #Initializes Images
-grass_block = pg.transform.scale(pg.image.load('assets/pictures/grass.png'), (64, 64))
-dirt_block = pg.transform.scale(pg.image.load('assets/pictures/dirt.png'), (64, 64))
-stone_block = pg.transform.scale(pg.image.load('assets/pictures/stone.png'), (64, 64))
+def load_images(path):
+	image = pg.transform.scale(pg.image.load(path), (64, 64))
+	return image
+grass_block = load_images('../assets/pictures/grass.png')
+dirt_block = load_images('../assets/pictures/dirt.png')
+stone_block = load_images('../assets/pictures/stone.png')
+spike_block = load_images('../assets/pictures/spike.png')
+player_hit = load_images('../assets/pictures/player_hit.png')
 #Initializes Animation Images
-player_idle = []
-for i in range(2):
-	player_idle.append(pg.transform.scale(pg.image.load('assets/animations/idle/idle_' + str(i) + '.png'), (64, 64)))
-player_running = []
-for i in range(2):
-	player_running.append(pg.transform.scale(pg.image.load('assets/animations/running/running_' + str(i) + '.png'), (64, 64)))
-player_crouch = pg.transform.scale(pg.image.load('assets/animations/crouch/crouch.png'), (64, 64))
-#Initializes Variables
-player_pic = player_idle[0]
-clock = pg.time.Clock()
-frame = 0
-block_size = 64	
-float_scroll = [0, 0]
-moving = [False, False]
-facing = [False, True]
-air_facing = [False, True]
-crouch = False
-ySpeed = 0
-slow_speed = 1
-air_time = 0
-up_pressed = False
+def load_animations(amount, path):
+	animation = []
+	for i in range(amount):
+		animation.append(pg.transform.scale(pg.image.load(path + str(i) + '.png'), (64, 64)))
+	return animation
+player_idle = load_animations(2, '../assets/animations/idle/idle_')
+player_running = load_animations(2, '../assets/animations/running/running_')
+player_crouch = load_animations(1, '../assets/animations/crouch/crouch_')
 #Creates Character Sprite Class
 class Character_Sprite (pg.sprite.Sprite):
 	def __init__(self, image, facing):
@@ -49,12 +41,21 @@ class Character_Sprite (pg.sprite.Sprite):
 		self.picture = image
 		self.image = self.picture
 		self.rect = self.image.get_rect()
+		self.mask = pg.mask.from_surface(self.image)
 		self.facing = facing
 	def update(self):
 		if facing[0]:
 			self.image = pg.transform.flip(self.picture, True, False)
 		elif facing[1]:
 			self.image = self.picture
+		self.mask = pg.mask.from_surface(self.image)
+
+class Sprite (pg.sprite.Sprite):
+	def __init__(self, image, rect):
+		super().__init__()
+		self.image = image
+		self.rect = rect
+		self.mask = pg.mask.from_surface(self.image)
 #Defines Collision Test Function
 def collision_test(player, blocks):
 	collision_list = []
@@ -62,11 +63,20 @@ def collision_test(player, blocks):
 		if player.colliderect(block):
 			collision_list.append(block)
 	return collision_list
+def sprite_collision_test(bunny, sprite_hitbox_group):
+	collision = pg.sprite.spritecollide(bunny, sprite_hitbox_group, False, pg.sprite.collide_mask)
+	if collision:
+		return True
+	return False
 #Defines Movement Function
-def move(player, movement, blocks):
+def move(player, bunny, movement, blocks, sprite_hitbox_group):
 	collision_direction = {'left': False, 'right': False, 'top': False, 'bottom': False}
 	#Moves Player On X Axis, Then Tests For Collision, Then Adresses It
 	player.x += movement[0]
+	if sprite_collision_test(bunny, sprite_hitbox_group):
+		dead = True
+	else:
+		dead = False
 	collision_list = collision_test(player, blocks)
 	for block in collision_list:
 		if movement[0] > 0:
@@ -85,7 +95,7 @@ def move(player, movement, blocks):
 		elif movement[1] > 0:
 			player.bottom = block.top
 			collision_direction['bottom'] = True
-	return player, collision_direction
+	return player, collision_direction, dead
 #Defines Animation Function
 def animation(frame, animation_type, image, per_frames):
 	for i in range(int(60 / per_frames)):
@@ -100,6 +110,23 @@ def animation(frame, animation_type, image, per_frames):
 				image = animation_type[0]
 				frame = 0
 	return image, frame
+#Initializes Variables
+player_pic = player_idle[0]
+dead = False
+clock = pg.time.Clock()
+frame = 0
+block_size = 64	
+float_scroll = [0, 0]
+moving = [False, False]
+facing = [False, True]
+air_facing = [False, True]
+crouch = False
+ySpeed = 0
+slow_speed = 1
+air_time = 0
+up_pressed = False
+starting_x = 128
+starting_y = 0
 #Creates Player Sprite Group, Then Adds Player
 bunny = Character_Sprite(player_pic, facing)
 character_group = pg.sprite.Group()
@@ -107,8 +134,8 @@ character_group.add(bunny)
 #Creates Player Rect
 player_pos = pg.Rect(player_pic.get_rect())
 #Starts Player At Specific Place
-starting_x = 128
 player_pos.x = starting_x
+player_pos.y = starting_y
 #Starts Main Loop
 running = True
 while running:
@@ -123,8 +150,13 @@ while running:
 	scroll = float_scroll.copy()
 	scroll[0] = int(float_scroll[0])
 	scroll[1] = int(float_scroll[1])
+	#Sees If Player Has Fallen Off Of The Map
+	if player_pos.y > len(game_map) * 64 or dead:
+		player_pos.x = starting_x
+		player_pos.y = starting_y
 	#Reads Each Value In Game Map
 	blocks = []
+	sprite_hitbox_group = pg.sprite.Group()
 	for y in range(len(game_map)):
 		for x in range(len(game_map[y])):
 			#Draws Block Based Off Of Corresponding Number
@@ -134,7 +166,11 @@ while running:
 				display.blit(dirt_block, (x * block_size - scroll[0], y * block_size - scroll[1]))
 			elif game_map[y][x] == '1':
 				display.blit(stone_block, (x * block_size - scroll[0], y * block_size - scroll[1]))
-			if game_map[y][x] != '0' and game_map[y][x] != 'b':
+			if game_map[y][x] == 's':
+				display.blit(spike_block, (x * block_size - scroll[0], y * block_size - scroll[1]))
+				sprite_hitbox = Sprite(spike_block, (x * block_size - scroll[0], y * block_size - scroll[1]))
+				sprite_hitbox_group.add(sprite_hitbox)
+			elif game_map[y][x] != '0' and game_map[y][x] != 'b':
 				blocks.append(pg.Rect(x * block_size, y * block_size, block_size, block_size))
 	#Resets X and Y Player Movement
 	player_movement = [0, 0]
@@ -160,7 +196,7 @@ while running:
 		facing[1] = True
 		facing[0] = False
 	#Runs Move Function
-	player_pos, collision_direction = move(player_pos, player_movement, blocks)
+	player_pos, collision_direction, dead = move(player_pos, bunny, player_movement, blocks, sprite_hitbox_group)
 	#Checks For Floor Collision And, If Collided, Stops Falling
 	if collision_direction['bottom'] == True:
 		ySpeed = 0
@@ -174,7 +210,7 @@ while running:
 		air_time += 1
 	#Runs Animations Based Off Of Player Actions
 	if crouch:
-		player_pic = player_crouch
+		player_pic = player_crouch[0]
 	elif player_movement[0] != 0 and air_time < 5:
 		player_pic, frame = animation(frame, player_running, player_pic, 15)
 	elif air_time < 5:
@@ -213,6 +249,10 @@ while running:
 				crouch = True
 				if air_time > 5:
 					ySpeed = 16
+			if event.key == pg.K_RETURN and dead:
+				player_pos.x = starting_x
+				player_pos.y = starting_y
+				dead = False
 			#Resets Animations After Action
 			frame = 0
 		if event.type == pg.KEYUP:

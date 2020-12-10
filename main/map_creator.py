@@ -1,4 +1,5 @@
 import pygame as pg, math
+pg.init()
 
 display = pg.display.set_mode((0, 0), pg.FULLSCREEN)
 pg.display.set_caption('Hopper Map Creator')
@@ -21,13 +22,14 @@ block_size = 16
 x_offset = 0
 y_offset = 0
 
-grass = pg.image.load('assets/pictures/grass.png')
-dirt = pg.image.load('assets/pictures/dirt.png')
-stone = pg.image.load('assets/pictures/stone.png')
-border = pg.image.load('assets/pictures/border.png')
+grass_block = pg.image.load('../assets/pictures/grass.png')
+dirt_block = pg.image.load('../assets/pictures/dirt.png')
+stone_block = pg.image.load('../assets/pictures/stone.png')
+spike_block = pg.image.load('../assets/pictures/spike.png')
+border_block = pg.image.load('../assets/pictures/border.png')
+selector = pg.image.load('../assets/pictures/selector.png')
 
-selected = 'grass'
-selected_block = grass
+selected_block = grass_block
 
 game_map = []
 for y in range(20):
@@ -43,9 +45,10 @@ for y in range(20):
 
 def pixel_to_grid(px, py, block_size, x_offset, y_offset):
     return px // block_size + x_offset, py // block_size + y_offset
-
 def grid_to_pixel(gx, gy, block_size, x_offset, y_offset):
-    return (gx - x_offset) * block_size, (gy - y_offset) * block_size
+	return (gx - x_offset) * block_size, (gy - y_offset) * block_size
+def scale_pic(image, block_size):
+	return pg.transform.scale(image, (block_size, block_size))
 
 running = True
 while running:
@@ -54,35 +57,28 @@ while running:
 
 	display.fill((0, 255, 255))
 
-	grass_block = pg.transform.scale(grass, (block_size, block_size))
-	dirt_block = pg.transform.scale(dirt, (block_size, block_size))
-	stone_block = pg.transform.scale(stone, (block_size, block_size))
-	border_block = pg.transform.scale(border, (block_size, block_size))
-
-	if selected == 'grass':
-		selected_block = grass_block
+	if selected_block == grass_block:
 		num = '3'
-	if selected == 'dirt':
-		selected_block = dirt_block
+	if selected_block == dirt_block:
 		num = '2'
-	if selected == 'stone':
-		selected_block = stone_block
+	if selected_block == stone_block:
 		num = '1'
+	if selected_block == spike_block:
+		num = 's'
 
 	for y in range(len(game_map)):
 		for x in range(len(game_map[y])):
 			gx, gy = grid_to_pixel(x, y, block_size, x_offset, y_offset)
 			if game_map[y][x] == '3':
-				display.blit(grass_block, (gx, gy))
-
+				display.blit(scale_pic(grass_block, block_size), (gx, gy))
 			elif game_map[y][x] == '2':
-				display.blit(dirt_block, (gx, gy))
-
+				display.blit(scale_pic(dirt_block, block_size), (gx, gy))
 			elif game_map[y][x] == '1':
-				display.blit(stone_block, (gx, gy))
-
+				display.blit(scale_pic(stone_block, block_size), (gx, gy))
+			elif game_map[y][x] == 's':
+				display.blit(scale_pic(spike_block, block_size), (gx, gy))
 			elif game_map[y][x] == 'b':
-				display.blit(border_block, (gx, gy))
+				display.blit(scale_pic(border_block, block_size), (gx, gy))
 
 	hx, hy = pixel_to_grid(pg.mouse.get_pos()[0], pg.mouse.get_pos()[1], block_size, x_offset, y_offset)
 
@@ -96,7 +92,8 @@ while running:
 		pass
 
 	if not del_block:
-		display.blit(pg.transform.scale(selected_block, (block_size, block_size)), grid_to_pixel(hx, hy, block_size, x_offset, y_offset))
+		display.blit(scale_pic(selected_block, block_size), grid_to_pixel(hx, hy, block_size, x_offset, y_offset))
+	display.blit(scale_pic(selector, block_size), grid_to_pixel(hx, hy, block_size, x_offset, y_offset))
 
 	if up:
 		y_offset -= 1
@@ -120,11 +117,13 @@ while running:
 			del_block = False
 		if event.type == pg.KEYDOWN:
 			if event.key == pg.K_1:
-				selected = 'grass'
+				selected_block = grass_block
 			if event.key == pg.K_2:
-				selected = 'dirt'
+				selected_block = dirt_block
 			if event.key == pg.K_3:
-				selected = 'stone'
+				selected_block = stone_block
+			if event.key == pg.K_4:
+				selected_block = spike_block
 			if event.key == pg.K_UP:
 				keys = pg.key.get_pressed()
 				if keys[pg.K_LSHIFT]:
@@ -157,6 +156,7 @@ while running:
 	pg.display.update()
 
 pg.display.quit()
+pg.quit()
 
 make_map = input('Do you want to save this map? (y / n): ')
 
@@ -165,11 +165,9 @@ if make_map == 'y':
 	map_name = map_name.replace(' ', '_')
 	file_name = map_name
 
-	map_file = open('assets/maps/' + file_name + '.txt', 'w')
+	map_file = open('../assets/maps/' + file_name + '.txt', 'w')
 	for y in range(20):
 		for x in range(100):
 			map_file.write(game_map[y][x])
 		map_file.write('\n')
 	map_file.close()
-
-pg.quit()
